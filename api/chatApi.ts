@@ -6,14 +6,18 @@ const API_BASE = 'https://dummy-chat-server.tribechat.com/api';
 
 export const fetchLatestMessages = async (): Promise<Message[]> => {
   const res = await fetch(`${API_BASE}/messages/latest`);
+  const json  = await res.json()
+  console.log("res",json)
   if (!res.ok) throw new Error('Failed to fetch latest messages');
-  return res.json();
+  return json;
 };
 
 export const fetchAllMessages = async (): Promise<Message[]> => {
   const res = await fetch(`${API_BASE}/messages/all`);
+  const json  = await res.json()
+  console.log("res",json)
   if (!res.ok) throw new Error('Failed to fetch all messages');
-  return res.json();
+  return json;
 };
 
 export const sendMessage = async (text: string): Promise<Message> => {

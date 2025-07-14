@@ -2,14 +2,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import {
   Button,
-  FlatList,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   TextInput,
   View,
 } from "react-native";
+import { FlashList } from '@shopify/flash-list';
 import {
+  fetchAllMessages, // <-- use this instead of fetchLatestMessages
   fetchLatestMessages,
   fetchParticipants,
   sendMessage,
@@ -20,7 +21,7 @@ import type { Participant } from "../store/useParticipantsStore";
 
 export default function ChatScreen() {
   const [input, setInput] = useState("");
-  const flatListRef = useRef<FlatList>(null);
+  const flatListRef = useRef<FlashList<Message>>(null);
   const queryClient = useQueryClient();
 
   // Fetch messages
@@ -30,7 +31,7 @@ export default function ChatScreen() {
     refetch: refetchMessages,
   } = useQuery<Message[]>({
     queryKey: ["messages"],
-    queryFn: fetchLatestMessages,
+    queryFn: fetchAllMessages,
   });
 
   // Fetch participants
@@ -57,18 +58,46 @@ export default function ChatScreen() {
   };
 
   // Helper to group consecutive messages by sender
-  const renderItem = ({ item, index }: { item: Message; index: number }) => {
-    const prev = messages[index + 1];
-    const showHeader = !prev || prev.senderUuid !== item.senderUuid;
-    const participant = participants.find(
-      (p: Participant) => p.uuid === item.senderUuid
-    );
+  // Returns an array of { groupId, participant, messages: Message[] }
+  const groupedMessages = React.useMemo(() => {
+    if (!messages.length) return [];
+    const groups: Array<{
+      groupId: string;
+      participant?: Participant;
+      messages: Message[];
+    }> = [];
+    let lastSender: string | null = null;
+    let currentGroup: any = null;
+    messages.forEach((msg) => {
+      if (msg.senderUuid !== lastSender) {
+        const participant = participants.find((p) => p.uuid === msg.senderUuid);
+        currentGroup = {
+          groupId: msg.uuid,
+          participant,
+          messages: [msg],
+        };
+        groups.push(currentGroup);
+        lastSender = msg.senderUuid;
+      } else {
+        currentGroup.messages.push(msg);
+      }
+    });
+    return groups;
+  }, [messages, participants]);
+
+  // Render a group of messages
+  const renderGroup = ({ item }: { item: any }) => {
     return (
-      <MessageItem
-        message={item}
-        participant={participant}
-        showHeader={showHeader}
-      />
+      <View style={{ marginBottom: 8 }}>
+        {item.messages.map((msg: Message, idx: number) => (
+          <MessageItem
+            key={msg.uuid}
+            message={msg}
+            participant={item.participant}
+            showHeader={idx === 0}
+          />
+        ))}
+      </View>
     );
   };
 
@@ -77,17 +106,18 @@ export default function ChatScreen() {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <FlatList
+      <FlashList
         ref={flatListRef}
-        data={messages}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.uuid}
+        data={groupedMessages}
+        renderItem={renderGroup}
+        keyExtractor={(item) => item.groupId}
         inverted
         contentContainerStyle={{ paddingVertical: 8 }}
         refreshing={messagesLoading || participantsLoading}
         onRefresh={() => {
           refetchMessages();
         }}
+        estimatedItemSize={100}
       />
       <View style={styles.inputBar}>
         <TextInput
