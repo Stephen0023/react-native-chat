@@ -9,7 +9,7 @@ export const fetchLatestMessages = async (): Promise<Message[]> => {
   const json  = await res.json()
   console.log("res",json)
   if (!res.ok) throw new Error('Failed to fetch latest messages');
-  return json;
+  return json.reverse();
 };
 
 export const fetchAllMessages = async (): Promise<Message[]> => {
@@ -17,7 +17,7 @@ export const fetchAllMessages = async (): Promise<Message[]> => {
   const json  = await res.json()
   console.log("res",json)
   if (!res.ok) throw new Error('Failed to fetch all messages');
-  return json;
+  return json.reverse();
 };
 
 export const sendMessage = async (text: string): Promise<Message> => {
@@ -32,6 +32,14 @@ export const sendMessage = async (text: string): Promise<Message> => {
 
 export const fetchParticipants = async (): Promise<Participant[]> => {
   const res = await fetch(`${API_BASE}/participants/all`);
-  if (!res.ok) throw new Error('Failed to fetch participants');
+    if (!res.ok) throw new Error('Failed to fetch participants');
+    const json  = await res.json()
+    console.log("participants",json)
+  return json;
+};
+
+export const fetchOlderMessages = async (refMessageUuid: string): Promise<Message[]> => {
+  const res = await fetch(`${API_BASE}/messages/older/${refMessageUuid}`);
+  if (!res.ok) throw new Error('Failed to fetch older messages');
   return res.json();
 };

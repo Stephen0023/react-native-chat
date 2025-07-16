@@ -5,9 +5,9 @@ import { persist } from 'zustand/middleware';
 export type Message = {
   uuid: string;
   text: string;
-  senderUuid: string;
-  createdAt: number;
-  editedAt?: number;
+  authorUuid: string;
+  sentAt: number;
+  updatedAt?: number;
   imageUrl?: string;
   reactions?: Record<string, number>;
   replyToMessage?: string;

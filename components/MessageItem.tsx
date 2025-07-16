@@ -1,12 +1,12 @@
 import React from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 type Message = {
   uuid: string;
   text: string;
-  senderUuid: string;
-  createdAt: number;
-  editedAt?: number;
+  authorUuid: string;
+  sentAt: number;
+  updatedAt?: number;
   imageUrl?: string;
   reactions?: Record<string, number>;
   replyToMessage?: string;
@@ -28,23 +28,30 @@ type Props = {
   message: Message;
   participant?: Participant;
   showHeader: boolean;
+  onPressReaction?: () => void;
+  onPressParticipant?: () => void;
 };
 
 export const MessageItem: React.FC<Props> = ({
   message,
   participant,
   showHeader,
+  onPressReaction,
+  onPressParticipant,
 }) => {
-  // Use authorUuid if present, else senderUuid
-  const author = (message as any).authorUuid || message.senderUuid;
-  const isMe = author === 'you';
+  const author = (message as any).authorUuid;
+  const isMe = author === "you";
 
   // Support both message.attachments (array) and message.imageUrl (string)
   const attachments = (message as any).attachments || [];
-  const hasImageAttachment = attachments.some((a: any) => a.type === 'image' || a.imageUrl) || message.imageUrl;
+  const hasImageAttachment =
+    attachments.some((a: any) => a.type === "image" || a.imageUrl) ||
+    message.imageUrl;
 
   return (
-    <View style={[styles.container, isMe ? styles.rightAlign : styles.leftAlign]}>
+    <View
+      style={[styles.container, isMe ? styles.rightAlign : styles.leftAlign]}
+    >
       {showHeader && (
         <View style={styles.header}>
           {participant?.avatarUrl ? (
@@ -55,19 +62,20 @@ export const MessageItem: React.FC<Props> = ({
           ) : (
             <View style={styles.avatarPlaceholder} />
           )}
-          <Text style={styles.name}>
+          <Text style={styles.name} onPress={onPressParticipant}>
             {participant?.name || author}
           </Text>
           <Text style={styles.time}>
-            {new Date(message.createdAt).toLocaleTimeString()}
+            {new Date(message.sentAt).toLocaleTimeString()}
           </Text>
         </View>
       )}
       <View style={[styles.body, isMe ? styles.bodyRight : styles.bodyLeft]}>
-        <View style={[styles.bubble, isMe ? styles.bubbleRight : styles.bubbleLeft]}>
-          {/* Render image attachments */}
+        <View
+          style={[styles.bubble, isMe ? styles.bubbleRight : styles.bubbleLeft]}
+        >
           {attachments.map((att: any, idx: number) =>
-            (att.type === 'image' || att.imageUrl) ? (
+            att.type === "image" || att.imageUrl ? (
               <Image
                 key={att.uuid || idx}
                 source={{ uri: att.imageUrl || att.url }}
@@ -80,23 +88,36 @@ export const MessageItem: React.FC<Props> = ({
             <Image source={{ uri: message.imageUrl }} style={styles.image} />
           )}
           <Text style={styles.text}>{message.text}</Text>
-          {message.editedAt && <Text style={styles.edited}>(edited)</Text>}
+          {message.sentAt !== message.updatedAt && (
+            <Text style={styles.edited}>(edited)</Text>
+          )}
         </View>
         {/* Reactions row */}
         {message.reactions && Object.keys(message.reactions).length > 0 && (
-          <View style={styles.reactions}>
+          <TouchableOpacity
+            onPress={onPressReaction}
+            activeOpacity={0.7}
+            style={styles.reactions}
+          >
             {Array.isArray(message.reactions)
               ? message.reactions.map((reaction: any, idx: number) => (
-                  <Text key={reaction.uuid || idx} style={styles.reaction}>
-                    {reaction.value} {reaction.count || 1}
-                  </Text>
+                  <View
+                    key={reaction.uuid || idx}
+                    style={styles.reactionBubble}
+                  >
+                    <Text style={styles.reactionText}>
+                      {reaction.value} {reaction.count || 1}
+                    </Text>
+                  </View>
                 ))
               : Object.entries(message.reactions).map(([emoji, count]) => (
-                  <Text key={emoji} style={styles.reaction}>
-                    {emoji} {count}
-                  </Text>
+                  <View key={emoji} style={styles.reactionBubble}>
+                    <Text style={styles.reactionText}>
+                      {emoji} {count}
+                    </Text>
+                  </View>
                 ))}
-          </View>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -104,9 +125,14 @@ export const MessageItem: React.FC<Props> = ({
 };
 
 const styles = StyleSheet.create({
-  container: { marginVertical: 4, paddingHorizontal: 8 },
-  leftAlign: { alignItems: 'flex-start' },
-  rightAlign: { alignItems: 'flex-end' },
+  container: {
+    marginVertical: 4,
+    paddingHorizontal: 8,
+    backgroundColor: "#f5f6fa",
+    borderRadius: 12,
+  },
+  leftAlign: { alignItems: "flex-start" },
+  rightAlign: { alignItems: "flex-end" },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 2 },
   avatar: { width: 28, height: 28, borderRadius: 14, marginRight: 8 },
   avatarPlaceholder: {
@@ -118,32 +144,32 @@ const styles = StyleSheet.create({
   },
   name: { fontWeight: "bold", marginRight: 8 },
   time: { color: "#888", fontSize: 12 },
-  body: { flexDirection: "column", maxWidth: '80%' },
-  bodyLeft: { alignItems: 'flex-start' },
-  bodyRight: { alignItems: 'flex-end' },
+  body: { flexDirection: "column", maxWidth: "80%" },
+  bodyLeft: { alignItems: "flex-start" },
+  bodyRight: { alignItems: "flex-end" },
   bubble: {
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 8,
     marginBottom: 2,
-    backgroundColor: '#f0f0f0',
-    shadowColor: '#000',
+    backgroundColor: "#f0f0f0",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 2,
     elevation: 1,
   },
   bubbleLeft: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderTopLeftRadius: 4,
     borderTopRightRadius: 16,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
   },
   bubbleRight: {
-    backgroundColor: '#d1e7ff',
+    backgroundColor: "#d1e7ff",
     borderTopLeftRadius: 16,
     borderTopRightRadius: 4,
     borderBottomLeftRadius: 16,
@@ -153,5 +179,25 @@ const styles = StyleSheet.create({
   edited: { fontSize: 12, color: "#888", marginLeft: 4 },
   image: { width: 180, height: 120, borderRadius: 8, marginVertical: 4 },
   reactions: { flexDirection: "row", marginTop: 2 },
-  reaction: { marginRight: 8, fontSize: 16 },
+  reactionBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#e3f0ff", // soft blue for reactions
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginRight: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: "#b3d4fc",
+  },
+  reactionText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+  },
 });
