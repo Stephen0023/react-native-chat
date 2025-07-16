@@ -1,17 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-export type Message = {
-  uuid: string;
-  text: string;
-  authorUuid: string;
-  sentAt: number;
-  updatedAt?: number;
-  imageUrl?: string;
-  reactions?: Record<string, number>;
-  replyToMessage?: string;
-};
+import type { Message } from '../types/chat';
 
 type ChatStore = {
   messages: Message[];

@@ -10,6 +10,9 @@ import {
   Text,
   TextInput,
   View,
+  Modal,
+  Image,
+  Pressable,
 } from "react-native";
 import {
   fetchLatestMessages,
@@ -21,12 +24,13 @@ import { DateSeparator } from "../components/DateSeparator";
 import { MessageGroup } from "../components/MessageGroup";
 import { ParticipantSheet } from "../components/ParticipantSheet";
 import { ReactionSheet } from "../components/ReactionSheet";
-import type { Message } from "../store/useChatStore";
-import type { Participant } from "../store/useParticipantsStore";
+import type { Message } from "@/types/chat";
+import type { Participant } from "@/types/chat";
+import { useChatStore } from '../store/useChatStore';
+import { useParticipantsStore } from '../store/useParticipantsStore';
 
 export default function ChatScreen() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [reactionSheet, setReactionSheet] = useState<null | {
@@ -36,16 +40,24 @@ export default function ChatScreen() {
   const [participantSheet, setParticipantSheet] = useState<null | Participant>(
     null
   );
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const flatListRef = useRef<FlashList<Message>>(null);
   const queryClient = useQueryClient();
 
+  // Zustand stores
+  const messages = useChatStore((state) => state.messages);
+  const setMessages = useChatStore((state) => state.setMessages);
+  const addMessage = useChatStore((state) => state.addMessage);
+  const participants = useParticipantsStore((state) => state.participants);
+  const setParticipants = useParticipantsStore((state) => state.setParticipants);
+
   // Fetch participants
-  const { data: participants = [], isLoading: participantsLoading } = useQuery<
-    Participant[]
-  >({
-    queryKey: ["participants"],
-    queryFn: fetchParticipants,
-  });
+  React.useEffect(() => {
+    (async () => {
+      const all = await fetchParticipants();
+      setParticipants(all);
+    })();
+  }, [setParticipants]);
 
   // Initial fetch: latest 25 messages
   React.useEffect(() => {
@@ -54,7 +66,7 @@ export default function ChatScreen() {
       setMessages(latest);
       setHasMore(latest.length === 25);
     })();
-  }, []);
+  }, [setMessages]);
 
   // Poll for new messages every 5 seconds
   React.useEffect(() => {
@@ -74,7 +86,7 @@ export default function ChatScreen() {
     setLoadingMore(true);
     const oldest = messages[messages.length - 1];
     const older = await fetchOlderMessages(oldest.uuid);
-    setMessages((prev) => [...prev, ...older]);
+    setMessages([...messages, ...older]);
     setHasMore(older.length === 25);
     setLoadingMore(false);
   };
@@ -82,16 +94,17 @@ export default function ChatScreen() {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: sendMessage,
-    onSuccess: () => {
+    onSuccess: (newMessage) => {
+      addMessage(newMessage);
       queryClient.invalidateQueries({ queryKey: ["messages"] });
     },
   });
 
   const handleSend = () => {
-    // if (!input.trim()) return;
-    // sendMessageMutation.mutate(input.trim());
-    // setInput("");
-    // flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    if (!input.trim()) return;
+    sendMessageMutation.mutate(input.trim());
+    setInput("");
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
   // Helper to get relative date label
@@ -178,7 +191,10 @@ export default function ChatScreen() {
         onPressReaction={(msg) => {
           let reactions: any[] = [];
           if (Array.isArray(msg.reactions)) {
-            reactions = msg.reactions;
+            reactions = msg.reactions.map((r) => ({
+              ...r,
+              participant: participants.find((p) => p.uuid === r.participantUuid),
+            }));
           } else if (msg.reactions) {
             reactions = Object.entries(msg.reactions).map(([value, count]) => ({
               value,
@@ -188,14 +204,16 @@ export default function ChatScreen() {
           setReactionSheet({ message: msg, reactions });
         }}
         onPressParticipant={(participant) => setParticipantSheet(participant)}
+        onPressImage={(url) => setPreviewImageUrl(url)}
       />
     );
   };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={{ flex: 1, backgroundColor: '#f5f6fa' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={100}
     >
       <FlashList
         ref={flatListRef}
@@ -204,7 +222,7 @@ export default function ChatScreen() {
         keyExtractor={(item) => item.key}
         inverted
         contentContainerStyle={{ paddingVertical: 8 }}
-        refreshing={participantsLoading}
+        refreshing={false}
         onRefresh={async () => {
           const latest = await fetchLatestMessages();
           setMessages(latest);
@@ -231,7 +249,7 @@ export default function ChatScreen() {
         participant={participantSheet}
         onClose={() => setParticipantSheet(null)}
       />
-      <SafeAreaView style={{ backgroundColor: "#fff" }}>
+      <SafeAreaView style={{ backgroundColor: '#f5f6fa' }}>
         <View style={styles.inputBar}>
           <TextInput
             style={styles.input}
@@ -246,6 +264,25 @@ export default function ChatScreen() {
           />
         </View>
       </SafeAreaView>
+      {/* Image Preview Modal */}
+      <Modal
+        visible={!!previewImageUrl}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImageUrl(null)}
+      >
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }}
+          onPress={() => setPreviewImageUrl(null)}
+        >
+          {previewImageUrl && (
+            <Image
+              source={{ uri: previewImageUrl }}
+              style={{ width: '90%', height: '70%', resizeMode: 'contain', borderRadius: 12 }}
+            />
+          )}
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -257,7 +294,7 @@ const styles = StyleSheet.create({
     padding: 8,
     borderTopWidth: 1,
     borderColor: "#eee",
-    backgroundColor: "#fff",
+    backgroundColor: "#f5f6fa",
   },
   input: {
     flex: 1,

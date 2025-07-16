@@ -1,6 +1,6 @@
 import React from "react";
 import { Image, Modal, Text, TouchableOpacity, View } from "react-native";
-import type { Participant } from "../store/useParticipantsStore";
+import type { Participant } from "@/types/chat";
 
 export type ParticipantSheetProps = {
   visible: boolean;
@@ -34,7 +34,7 @@ export const ParticipantSheet: React.FC<ParticipantSheetProps> = ({
           borderTopLeftRadius: 18,
           borderTopRightRadius: 18,
           padding: 24,
-          minHeight: 160,
+          minHeight: 220,
           alignItems: "center",
         }}
       >
@@ -46,10 +46,24 @@ export const ParticipantSheet: React.FC<ParticipantSheetProps> = ({
             />
           </View>
         )}
-        <Text style={{ fontWeight: "bold", fontSize: 18 }}>
+        <Text style={{ fontWeight: "bold", fontSize: 20, marginBottom: 4 }}>
           {participant?.name}
         </Text>
-        <Text style={{ color: "#888", marginTop: 4 }}>{participant?.uuid}</Text>
+        {participant?.jobTitle && (
+          <Text style={{ color: "#555", fontSize: 15, marginBottom: 2 }}>
+            {participant.jobTitle}
+          </Text>
+        )}
+        {participant?.bio && (
+          <Text style={{ color: "#888", fontSize: 14, marginBottom: 2, fontStyle: 'italic' }}>
+            {participant.bio}
+          </Text>
+        )}
+        {participant?.email && (
+          <Text style={{ color: "#333", fontSize: 15, marginBottom: 2 }}>
+            {participant.email}
+          </Text>
+        )}
       </View>
     </TouchableOpacity>
   </Modal>

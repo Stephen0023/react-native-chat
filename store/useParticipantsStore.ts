@@ -1,11 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-
-export type Participant = {
-  uuid: string;
-  name: string;
-  avatarUrl?: string;
-};
+import type { Participant } from '../types/chat';
 
 type ParticipantsStore = {
   participants: Participant[];

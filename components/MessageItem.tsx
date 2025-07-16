@@ -30,6 +30,7 @@ type Props = {
   showHeader: boolean;
   onPressReaction?: () => void;
   onPressParticipant?: () => void;
+  onPressImage?: (imageUrl: string) => void;
 };
 
 export const MessageItem: React.FC<Props> = ({
@@ -38,6 +39,7 @@ export const MessageItem: React.FC<Props> = ({
   showHeader,
   onPressReaction,
   onPressParticipant,
+  onPressImage,
 }) => {
   const author = (message as any).authorUuid;
   const isMe = author === "you";
@@ -53,7 +55,7 @@ export const MessageItem: React.FC<Props> = ({
       style={[styles.container, isMe ? styles.rightAlign : styles.leftAlign]}
     >
       {showHeader && (
-        <View style={styles.header}>
+        <TouchableOpacity style={styles.header} onPress={onPressParticipant} activeOpacity={0.7}>
           {participant?.avatarUrl ? (
             <Image
               source={{ uri: participant.avatarUrl }}
@@ -62,13 +64,13 @@ export const MessageItem: React.FC<Props> = ({
           ) : (
             <View style={styles.avatarPlaceholder} />
           )}
-          <Text style={styles.name} onPress={onPressParticipant}>
+          <Text style={styles.name}>
             {participant?.name || author}
           </Text>
           <Text style={styles.time}>
             {new Date(message.sentAt).toLocaleTimeString()}
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
       <View style={[styles.body, isMe ? styles.bodyRight : styles.bodyLeft]}>
         <View
@@ -76,16 +78,31 @@ export const MessageItem: React.FC<Props> = ({
         >
           {attachments.map((att: any, idx: number) =>
             att.type === "image" || att.imageUrl ? (
-              <Image
+              <TouchableOpacity
                 key={att.uuid || idx}
-                source={{ uri: att.imageUrl || att.url }}
-                style={styles.image}
-              />
+                onPress={() => {
+                  const url = att.imageUrl || att.url;
+                  if (onPressImage && url) onPressImage(url);
+                }}
+                activeOpacity={0.8}
+              >
+                <Image
+                  source={{ uri: att.imageUrl || att.url }}
+                  style={styles.image}
+                />
+              </TouchableOpacity>
             ) : null
           )}
           {/* Render imageUrl if present */}
           {message.imageUrl && (
-            <Image source={{ uri: message.imageUrl }} style={styles.image} />
+            <TouchableOpacity
+              onPress={() => {
+                if (onPressImage && message.imageUrl) onPressImage(message.imageUrl);
+              }}
+              activeOpacity={0.8}
+            >
+              <Image source={{ uri: message.imageUrl }} style={styles.image} />
+            </TouchableOpacity>
           )}
           <Text style={styles.text}>{message.text}</Text>
           {message.sentAt !== message.updatedAt && (

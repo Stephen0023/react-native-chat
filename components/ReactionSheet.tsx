@@ -1,5 +1,5 @@
 import React from "react";
-import { Modal, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Modal, ScrollView, Text, TouchableOpacity, View, Image } from "react-native";
 
 export type ReactionSheetProps = {
   visible: boolean;
@@ -50,10 +50,23 @@ export const ReactionSheet: React.FC<ReactionSheetProps> = ({
               }}
             >
               <Text style={{ fontSize: 20, marginRight: 8 }}>{r.value}</Text>
-              <Text style={{ fontSize: 16, color: "#555" }}>
+              <Text style={{ fontSize: 16, color: "#555", marginRight: 8 }}>
                 x{r.count || 1}
               </Text>
-              {/* If you have participant info per reaction, list them here */}
+              {r.participant && (
+                <>
+                  {r.participant.avatarUrl && (
+                    <View style={{ marginRight: 6 }}>
+                      <Image
+                        source={{ uri: r.participant.avatarUrl }}
+                        style={{ width: 24, height: 24, borderRadius: 12 }}
+                      />
+
+                    </View>
+                  )}
+                  <Text style={{ fontSize: 15, color: "#333" }}>{r.participant.name}</Text>
+                </>
+              )}
             </View>
           ))}
         </ScrollView>
