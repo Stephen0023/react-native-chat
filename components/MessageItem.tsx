@@ -8,7 +8,7 @@ type Message = {
   sentAt: number;
   updatedAt?: number;
   imageUrl?: string;
-  reactions?: Record<string, number>;
+  reactions?: any[] | Record<string, number>;
   replyToMessage?: string;
   attachments?: Array<{
     uuid: string;
@@ -31,6 +31,7 @@ type Props = {
   onPressReaction?: () => void;
   onPressParticipant?: () => void;
   onPressImage?: (imageUrl: string) => void;
+  messages?: Message[];
 };
 
 export const MessageItem: React.FC<Props> = ({
@@ -40,6 +41,7 @@ export const MessageItem: React.FC<Props> = ({
   onPressReaction,
   onPressParticipant,
   onPressImage,
+  messages = [],
 }) => {
   const author = (message as any).authorUuid;
   const isMe = author === "you";
@@ -49,6 +51,16 @@ export const MessageItem: React.FC<Props> = ({
   const hasImageAttachment =
     attachments.some((a: any) => a.type === "image" || a.imageUrl) ||
     message.imageUrl;
+
+  // Quoted message logic
+  let quotedMessage: Message | undefined;
+  if (message.replyToMessage) {
+    if (typeof message.replyToMessage === 'object' && message.replyToMessage !== null) {
+      quotedMessage = message.replyToMessage as Message;
+    } else if (typeof message.replyToMessage === 'string') {
+      quotedMessage = messages.find((m) => m.uuid === message.replyToMessage);
+    }
+  }
 
   return (
     <View
@@ -76,6 +88,13 @@ export const MessageItem: React.FC<Props> = ({
         <View
           style={[styles.bubble, isMe ? styles.bubbleRight : styles.bubbleLeft]}
         >
+          {/* Quoted message block */}
+          {quotedMessage && (
+            <View style={styles.quotedBlock}>
+              <Text style={styles.quotedAuthor}>{quotedMessage.authorUuid}</Text>
+              <Text style={styles.quotedText} numberOfLines={2} ellipsizeMode="tail">{quotedMessage.text}</Text>
+            </View>
+          )}
           {attachments.map((att: any, idx: number) =>
             att.type === "image" || att.imageUrl ? (
               <TouchableOpacity
@@ -216,5 +235,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     color: "#333",
+  },
+  quotedBlock: {
+    backgroundColor: "#e0e0e0",
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: "#ccc",
+  },
+  quotedAuthor: {
+    fontWeight: "bold",
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  quotedText: {
+    fontSize: 14,
+    color: "#555",
   },
 });

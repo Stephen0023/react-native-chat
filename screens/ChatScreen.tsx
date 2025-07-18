@@ -1,20 +1,23 @@
+import type { Message, Participant } from "@/types/chat";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlashList } from "@shopify/flash-list";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useRef, useState } from "react";
 import {
   Button,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  Pressable,
   SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
-  Modal,
-  Image,
-  Pressable,
 } from "react-native";
 import {
+  fetchInfo,
   fetchLatestMessages,
   fetchOlderMessages,
   fetchParticipants,
@@ -24,8 +27,6 @@ import { DateSeparator } from "../components/DateSeparator";
 import { MessageGroup } from "../components/MessageGroup";
 import { ParticipantSheet } from "../components/ParticipantSheet";
 import { ReactionSheet } from "../components/ReactionSheet";
-import type { Message } from "@/types/chat";
-import type { Participant } from "@/types/chat";
 import { useChatStore } from '../store/useChatStore';
 import { useParticipantsStore } from '../store/useParticipantsStore';
 
@@ -50,6 +51,9 @@ export default function ChatScreen() {
   const addMessage = useChatStore((state) => state.addMessage);
   const participants = useParticipantsStore((state) => state.participants);
   const setParticipants = useParticipantsStore((state) => state.setParticipants);
+  const sessionUuid = useChatStore((state) => state.sessionUuid);
+  const setSessionUuid = useChatStore((state) => state.setSessionUuid);
+  const resetStore = useChatStore((state) => state.resetStore);
 
   // Fetch participants
   React.useEffect(() => {
@@ -79,6 +83,30 @@ export default function ChatScreen() {
     }, 5000);
     return () => clearInterval(interval);
   }, [messages]);
+
+  // Hydration and session check logic
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const info = await fetchInfo();
+        if (!sessionUuid || sessionUuid !== info.sessionUuid) {
+          // Session changed or not set: clear Zustand and AsyncStorage, fetch latest data
+          resetStore();
+          await AsyncStorage.removeItem('chat-storage');
+          const latest = await fetchLatestMessages();
+          setMessages(latest);
+          setHasMore(latest.length === 25);
+          const allParticipants = await fetchParticipants();
+          setParticipants(allParticipants);
+          setSessionUuid(info.sessionUuid);
+        }
+        // else: session matches, use local data
+      } catch (e) {
+        // Optionally handle error (offline, etc.)
+        // For now, do nothing and use local data
+      }
+    })();
+  }, []);
 
   // Fetch older messages (infinite scroll up)
   const fetchMore = async () => {
@@ -188,10 +216,12 @@ export default function ChatScreen() {
     return (
       <MessageGroup
         group={item}
+        messages={messages}
         onPressReaction={(msg) => {
+          console.log("msg",messages)
           let reactions: any[] = [];
           if (Array.isArray(msg.reactions)) {
-            reactions = msg.reactions.map((r) => ({
+            reactions = msg.reactions.map((r:any) => ({
               ...r,
               participant: participants.find((p) => p.uuid === r.participantUuid),
             }));

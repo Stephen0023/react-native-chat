@@ -1,6 +1,5 @@
 // Simple chat API utility for fetching and sending messages
-import type { Message} from '@/types/chat';
-import type { Participant } from '@/types/chat';
+import type { Message, Participant } from '@/types/chat';
 
 
 const API_BASE = 'https://dummy-chat-server.tribechat.com/api';
@@ -43,4 +42,11 @@ export const fetchOlderMessages = async (refMessageUuid: string): Promise<Messag
   const res = await fetch(`${API_BASE}/messages/older/${refMessageUuid}`);
   if (!res.ok) throw new Error('Failed to fetch older messages');
   return res.json();
+};
+
+export const fetchInfo = async (): Promise<any> => {
+  const res = await fetch(`${API_BASE}/info`);
+  if (!res.ok) throw new Error('Failed to fetch info');
+  const json  = await res.json()
+  return json;
 };

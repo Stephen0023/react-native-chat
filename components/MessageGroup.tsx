@@ -1,28 +1,23 @@
 import React from "react";
 import { View } from "react-native";
-import type { Message, Participant } from "../types/chat";
 import { MessageItem } from "./MessageItem";
 
 export const MessageGroup: React.FC<{
   group: any;
-  onPressReaction: (msg: Message) => void;
-  onPressParticipant: (participant: Participant) => void;
+  messages: any[];
+  onPressReaction: (msg: any) => void;
+  onPressParticipant: (participant: any) => void;
   onPressImage?: (url: string) => void;
-}> = ({ group, onPressReaction, onPressParticipant, onPressImage }) => (
+}> = ({ group, messages, onPressReaction, onPressParticipant, onPressImage }) => (
   <View style={{ marginBottom: 8 }}>
-    {group.messages.map((msg: Message, idx: number) => (
+    {group.messages.map((msg: any, idx: number) => (
       <MessageItem
         key={msg.uuid}
         message={msg}
         participant={group.participant}
         showHeader={idx === 0}
-        onPressReaction={() => onPressReaction({
-          ...msg,
-          reactions:
-            Array.isArray(msg.reactions)
-              ? undefined
-              : msg.reactions,
-        } as Message)}
+        messages={messages}
+        onPressReaction={() => onPressReaction(msg)}
         onPressParticipant={() =>
           group.participant && onPressParticipant(group.participant)
         }
